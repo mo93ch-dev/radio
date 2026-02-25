@@ -1,0 +1,344 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>حسابداری آریا پرداخت</title>
+<style>
+:root{
+--bg:#0e1621;
+--card:#17212b;
+--primary:#2AABEE;
+--text:#ffffff;
+--muted:#8f9ca8;
+--success:#00c853;
+--danger:#ff5252;
+}
+body{margin:0;font-family:Tahoma;background:var(--bg);color:var(--text);}
+header{background:var(--card);padding:18px;text-align:center;font-size:20px;font-weight:600;box-shadow:0 2px 10px rgba(0,0,0,0.4); position:relative;}
+header #walletIcon{position:absolute; top:18px; right:20px; cursor:pointer; font-size:24px;}
+.container{max-width:1000px;margin:auto;padding:20px;}
+.card{background:var(--card);border-radius:14px;padding:18px;margin-bottom:18px;box-shadow:0 4px 20px rgba(0,0,0,0.4);}
+h3{margin-top:0;font-size:15px;margin-bottom:10px;color:var(--muted);}
+input,select{width:100%;padding:12px;margin-bottom:10px;border-radius:10px;border:none;background:#1f2c3a;color:white;font-size:14px;}
+input:focus,select:focus{outline:2px solid var(--primary);}
+button{padding:8px 10px;border:none;border-radius:8px;cursor:pointer;font-size:13px;margin:3px 2px;}
+button:hover{opacity:0.85; transform:scale(1.02);}
+.btn-success{background:#00c853;color:white;}
+.btn-danger{background:#ff5252;color:white;}
+.btn-copy{background:#2d3e50;color:white;}
+.btn-history{background:#374a5c;color:white;}
+.customer{padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05);}
+.balance{font-weight:600;margin-top:4px;font-size:15px;}
+.status{font-size:12px;margin-right:6px;}
+.pos{color:var(--success);}
+.neg{color:var(--danger);}
+.small{font-size:12px;color:var(--muted);margin-top:4px;}
+.historyBox{display:none;background:#1f2c3a;padding:10px;border-radius:8px;margin-top:8px;font-size:12px;}
+.toggleCustomer{cursor:pointer;display:flex;justify-content:space-between;align-items:center;}
+#walletCard {
+  display:none;
+  position:absolute;
+  top:60px;
+  right:20px;
+  background:var(--card);
+  padding:15px;
+  border-radius:12px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.5);
+  min-width:250px;
+  z-index:1000;
+}
+.walletRow {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:8px;
+}
+.walletLabel {font-size:14px; color:var(--muted);}
+.walletValue {font-weight:700; font-size:16px;}
+</style>
+</head>
+<body>
+<header>
+  حسابداری آریا پرداخت
+  <span id="walletIcon">👜</span>
+</header>
+
+<!-- کارت کیف -->
+<div id="walletCard">
+  <div class="walletRow">
+    <div class="walletLabel">مجموع طلب</div>
+    <div class="walletValue" style="color:var(--success);" id="totalCreditNum">0.00</div>
+  </div>
+  <div class="walletRow">
+    <div class="walletLabel">مجموع قرضدار</div>
+    <div class="walletValue" style="color:var(--danger);" id="totalDebitNum">0.00</div>
+  </div>
+</div>
+
+<div class="container">
+
+<div class="card">
+  <div class="toggleCustomer" onclick="toggleCustomerForm()">افزودن مشتری <span id="toggleArrow">▼</span></div>
+  <div id="customerForm" style="display:none;margin-top:10px;">
+    <input type="text" id="name" placeholder="نام مشتری">
+    <input type="text" id="phone" placeholder="شماره تماس">
+    <button class="btn-success" onclick="addCustomer()">ثبت مشتری</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="toggleCustomer" onclick="toggleTransactionForm()">ثبت تراکنش <span id="toggleTransactionArrow">▼</span></div>
+  <div id="transactionForm" style="display:none;margin-top:10px;">
+    <select id="customerSelect">
+      <option value="" disabled selected>انتخاب مشتری</option>
+    </select>
+    <select id="type">
+      <option value="deposit">پرداخت</option>
+      <option value="withdraw">برداشت</option>
+    </select>
+    <input type="text" id="amount" placeholder="مبلغ" oninput="handleAmountInput(this)">
+    <input type="text" id="note" placeholder="بابت (اختیاری)" style="margin-bottom:10px;">
+    <button class="btn-success" onclick="addTransaction()">ثبت تراکنش ➕</button>
+  </div>
+</div>
+
+<div class="card">
+<h3>🔎 جستجو کاربران</h3>
+<input type="text" id="search" placeholder="جستجوی نام..." oninput="render()">
+</div>
+
+<div class="card">
+<h3>لیست مشتریان</h3>
+<div id="customerList"></div>
+</div>
+
+<div id="transactionModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;">
+  <div style="background:var(--card); padding:20px; border-radius:12px; max-width:300px; width:90%; text-align:center;">
+    <div style="margin-bottom:15px; font-weight:600;">انتخاب عملیات</div>
+    <button id="btnOnlySave" class="btn-success" style="margin-bottom:10px;width:100%;">ثبت تراکنش</button>
+    <button id="btnSaveShare" class="btn-success" style="margin-bottom:10px;width:100%;">ثبت و اشتراک گذاری</button>
+    <button id="btnCancel" class="btn-danger" style="width:100%;">لغو</button>
+  </div>
+</div>
+
+<script>
+let customers=JSON.parse(localStorage.getItem("DarkTelegramProAccounting"))||[];
+
+function save(){localStorage.setItem("DarkTelegramProAccounting",JSON.stringify(customers));}
+function precise(n){return Number(n.toFixed(2));}
+function persianToEnglish(str){
+    const persianNums = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+    const englishNums = ['0','1','2','3','4','5','6','7','8','9'];
+    let res = str;
+    persianNums.forEach((p,i)=>{res=res.replaceAll(p,englishNums[i]);});
+    return res;
+}
+
+function toggleCustomerForm(){
+let form=document.getElementById("customerForm");
+let arrow=document.getElementById("toggleArrow");
+if(form.style.display=="none"){form.style.display="block"; arrow.innerText="▲";}
+else{form.style.display="none"; arrow.innerText="▼";}
+}
+
+function toggleTransactionForm(){
+let form=document.getElementById("transactionForm");
+let arrow=document.getElementById("toggleTransactionArrow");
+if(form.style.display=="none"){form.style.display="block"; arrow.innerText="▲";}
+else{form.style.display="none"; arrow.innerText="▼";}
+}
+
+function handleAmountInput(el){
+    el.value = persianToEnglish(el.value);
+    el.value = el.value.replace(/[^0-9.]/g,"");
+    let parts = el.value.split(".");
+    if(parts.length>2) el.value = parts[0]+"."+parts[1];
+}
+
+function addCustomer(){
+let name=document.getElementById("name").value.trim();
+let phone=document.getElementById("phone").value.trim();
+if(!name) return alert("نام وارد نشده");
+if(customers.some(c=>c.name===name || c.phone===phone)) return alert("نام یا شماره تکراری است");
+customers.push({id:Date.now(),name,phone,balance:0,transactions:[]});
+save();
+document.getElementById("name").value="";
+document.getElementById("phone").value="";
+document.getElementById("customerForm").style.display="none";
+document.getElementById("toggleArrow").innerText="▼";
+alert("✅ مشتری جدید با موفقیت ثبت گردید");
+render();
+}
+
+function addTransaction(){
+    let id=document.getElementById("customerSelect").value;
+    if(!id){return alert("لطفاً مشتری را انتخاب کنید");}
+    let type=document.getElementById("type").value;
+    let amountStr = document.getElementById("amount").value;
+    amountStr = persianToEnglish(amountStr);
+    let amount=parseFloat(amountStr);
+    if(isNaN(amount)) return alert("مبلغ وارد نشده");
+    let note=document.getElementById("note").value.trim();
+
+    window.tempTransaction = {id,type,amount,note};
+    document.getElementById("transactionModal").style.display="flex";
+}
+
+document.getElementById("btnOnlySave").onclick = function(){ saveTransaction(false); };
+document.getElementById("btnSaveShare").onclick = function(){ saveTransaction(true); };
+document.getElementById("btnCancel").onclick = function(){ document.getElementById("transactionModal").style.display="none"; };
+
+function saveTransaction(shareFlag){
+    let {id,type,amount,note} = window.tempTransaction;
+    let c=customers.find(x=>x.id==id);
+    if(type=="deposit"){c.balance=precise(c.balance+amount);}
+    else{c.balance=precise(c.balance-amount);}
+    let date = new Date().toLocaleString();
+    c.transactions.push({type,amount:precise(amount),date,note});
+    save();
+
+    document.getElementById("amount").value="";
+    document.getElementById("note").value="";
+    document.getElementById("transactionForm").style.display="none";
+    document.getElementById("toggleTransactionArrow").innerText="▼";
+    document.getElementById("transactionModal").style.display="none";
+
+    render();
+    alert("✅ تراکنش با موفقیت ثبت شد");
+
+    if(shareFlag){
+        let status = c.balance >= 0 ? "طلبکار" : "قرضدار";
+        let text = `مشتری گرامی ${c.name}\n` +
+                   `در تاریخ ${date}\n` +
+                   `مبلغ: ${amount.toFixed(2)}\n` +
+                   `نوع: ${type=="deposit"?"پرداخت":"برداشت"}\n` +
+                   `در حسابتان نزد ما ثبت گردید\n` +
+                   `مبلغ باقی مانده: ${c.balance.toFixed(2)} (${status})\n\n` +
+                   `حسابداری آریا پرداخت`;
+
+        if(navigator.share){
+            navigator.share({title:"تراکنش حسابداری", text:text})
+            .catch(()=>{ navigator.clipboard.writeText(text); alert("اشتراک‌گذاری انجام نشد، متن کپی شد."); });
+        } else {
+            let encodedText = encodeURIComponent(text);
+            let tgLink = `https://t.me/share/url?url=&text=${encodedText}`;
+            let waLink = `https://api.whatsapp.com/send?text=${encodedText}`;
+            let mailLink = `mailto:?subject=تراکنش حسابداری&body=${encodedText}`;
+            let shareBox = document.createElement("div");
+            shareBox.style.position = "fixed";
+            shareBox.style.top = "50%";
+            shareBox.style.left = "50%";
+            shareBox.style.transform = "translate(-50%, -50%)";
+            shareBox.style.background = "#17212b";
+            shareBox.style.padding = "15px";
+            shareBox.style.borderRadius = "12px";
+            shareBox.style.textAlign = "center";
+            shareBox.style.zIndex = 10000;
+            shareBox.innerHTML = `
+                <div style="margin-bottom:10px; font-weight:600; color:#fff;">اشتراک گذاری تراکنش</div>
+                <a href="${tgLink}" target="_blank" style="display:block;margin:5px;padding:8px;background:#2AABEE;color:#fff;border-radius:8px;text-decoration:none;">تلگرام</a>
+                <a href="${waLink}" target="_blank" style="display:block;margin:5px;padding:8px;background:#25D366;color:#fff;border-radius:8px;text-decoration:none;">واتساپ</a>
+                <a href="${mailLink}" target="_blank" style="display:block;margin:5px;padding:8px;background:#FF5722;color:#fff;border-radius:8px;text-decoration:none;">ایمیل</a>
+                <button id="closeShare" style="margin-top:10px;padding:6px 10px;border:none;border-radius:6px;background:#ff5252;color:#fff;cursor:pointer;">بستن</button>
+            `;
+            document.body.appendChild(shareBox);
+            document.getElementById("closeShare").onclick = ()=>{ shareBox.remove(); };
+        }
+    }
+    window.tempTransaction = null;
+}
+
+function toggleHistory(id){
+let box=document.getElementById("h"+id);
+box.style.display=box.style.display=="block"?"none":"block";
+}
+
+function copyBalance(c){
+let historyText=c.transactions.map(t=>`${t.type=="deposit"?"➕":"➖"} ${t.amount.toFixed(2)} - ${t.date}${t.note?(" بابت: "+t.note):""}`).join("\n");
+let fullText=`مشتری: ${c.name}\nموجودی: ${c.balance.toFixed(2)}\n\nتاریخچه تراکنش‌ها:\n${historyText}\n\nحسابداری آریا پرداخت`;
+navigator.clipboard.writeText(fullText);
+alert("کاپی شد با تاریخچه!");
+}
+
+document.getElementById("walletIcon").onclick = function(e){
+  e.stopPropagation();
+  let card = document.getElementById("walletCard");
+  card.style.display = card.style.display === "block" ? "none" : "block";
+};
+document.addEventListener("click", function(e){
+  let card = document.getElementById("walletCard");
+  let icon = document.getElementById("walletIcon");
+  if(!card.contains(e.target) && e.target !== icon){
+    card.style.display = "none";
+  }
+});
+
+function updateWalletTotals(totalCredit,totalDebit){
+  document.getElementById("totalCreditNum").innerText = totalCredit.toLocaleString();
+  document.getElementById("totalDebitNum").innerText = totalDebit.toLocaleString();
+}
+
+function render(){
+let list=document.getElementById("customerList");
+let select=document.getElementById("customerSelect");
+let search=document.getElementById("search").value.toLowerCase();
+list.innerHTML=""; select.innerHTML=`<option value="" disabled selected>انتخاب مشتری</option>`;
+let totalDebit=0,totalCredit=0;
+let filtered = customers.filter(c=>c.name.toLowerCase().includes(search));
+if(filtered.length===0) list.innerHTML="<div>مشتری ثبت نشده است</div>";
+filtered.forEach(c=>{
+select.innerHTML+=`<option value="${c.id}">${c.name}</option>`;
+let statusClass=c.balance>=0?"pos":"neg";
+if(c.balance>=0) totalCredit+=c.balance; else totalDebit+=Math.abs(c.balance);
+let history=c.transactions.map(t=>`<div>${t.type=="deposit"?"➕":"➖"} ${t.amount.toFixed(2)} - ${t.date}${t.note?(" بابت: "+t.note):""}</div>`).join("");
+list.innerHTML+=`
+<div class="customer">
+<strong>${c.name}</strong>
+<div class="small">${c.phone}</div>
+<div class="balance ${statusClass}">${c.balance.toFixed(2)} <span class="status">${c.balance>=0?"طلبکار":"قرضدار"}</span></div>
+<div>
+<button class="btn-copy" onclick="copyBalance(customers.find(x=>x.id==${c.id}))">کاپی</button>
+<button class="btn-history" onclick="toggleHistory(${c.id})">سابقه</button>
+</div>
+<div class="historyBox" id="h${c.id}">${history || "تراکنشی وجود ندارد"}</div>
+</div>
+`;
+});
+updateWalletTotals(totalCredit,totalDebit);
+}
+
+render();
+</script>
+</body>
+</html>
+حسابداری آریا پرداخت
+<!-- دکمه ضربدر -->
+<a href="https://mo93ch-dev.github.io/Aryapardakhttel" class="close-btn">✖</a>
+
+<style>
+.close-btn {
+  position: fixed;
+  top: 15px;
+  left: 15px; /* تغییر دادیم به چپ */
+  background: red;
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: bold;
+  text-decoration: none;
+  z-index: 9999;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  transition: 0.2s;
+}
+
+.close-btn:hover {
+  background: darkred;
+  transform: scale(1.1);
+}
+</style>
